@@ -176,6 +176,20 @@ public class Visitor2 extends DepthFirstAdapter {
 		}
         outADivExpression(node);
 	}
+	//FLOORDIV
+	@Override
+	public void caseAFloordivExpression(AFloordivExpression node) {
+		inAFloordivExpression(node);
+		if(node.getLpar() != null) {
+			Node left = node.getLpar();
+			arithmetic((PExpression)left,"Floor Div");
+		}
+		if(node.getRpar() != null) {
+			Node right = node.getRpar();
+			arithmetic((PExpression)right,"Floor Div");
+		}
+        outAFloordivExpression(node);
+	}
 	//MOD
 	@Override
 	public void caseAModExpression(AModExpression node) {
@@ -480,9 +494,16 @@ public class Visitor2 extends DepthFirstAdapter {
 		} else if(exp instanceof AMinusExpression || exp instanceof ADivExpression 
 				|| exp instanceof AModExpression || exp instanceof AMultExpression 
 				|| exp instanceof AMultmultExpression || exp instanceof AParExpression
-				|| exp instanceof AAbsExpression || exp instanceof ARoundExpression){
+				|| exp instanceof AAbsExpression || exp instanceof ARoundExpression
+				|| exp instanceof AFloordivExpression){
 					type = "NUMBER";
 		} else if(exp instanceof ALenExpression) {
+			type = "NUMBER";
+		} else if(exp instanceof AStrExpression) {
+			type = "STRING";
+		} else if(exp instanceof AIntExpression) {
+			type = "NUMBER";
+		} else if(exp instanceof AFloatExpression) {
 			type = "NUMBER";
 		}
 		setOut(node,type);
@@ -507,8 +528,12 @@ public class Visitor2 extends DepthFirstAdapter {
 		} else if (expression instanceof AMinExpression || expression instanceof AMultExpression 
 		    || expression instanceof AMultmultExpression || expression instanceof AModExpression || expression instanceof ADivExpression 
 			|| expression instanceof AParExpression || expression instanceof AMinExpression || expression instanceof AMaxExpression
-			|| expression instanceof AAbsExpression || expression instanceof ARoundExpression){
+			|| expression instanceof AAbsExpression || expression instanceof ARoundExpression
+			|| expression instanceof AFloordivExpression || expression instanceof AIntExpression 
+			|| expression instanceof AFloatExpression){
 			return_type = "NUMBER";
+		}else if(expression instanceof AStrExpression) {
+			return_type = "STRING";
 		}else if(expression instanceof AValueExpression) {
 			in_function = false;
 			PValue val = ((AValueExpression)expression).getValue();
@@ -711,8 +736,12 @@ public class Visitor2 extends DepthFirstAdapter {
 	private String getExpressionType(PExpression expression) {
 		if (expression instanceof AAddExpression || expression instanceof AMinExpression || expression instanceof AMultExpression 
 		    || expression instanceof AMultmultExpression || expression instanceof AModExpression || expression instanceof ADivExpression 
-			|| expression instanceof AParExpression || expression instanceof AMinExpression || expression instanceof AMaxExpression){
+			|| expression instanceof AParExpression || expression instanceof AMinExpression || expression instanceof AMaxExpression
+			|| expression instanceof AFloordivExpression || expression instanceof AAbsExpression || expression instanceof ARoundExpression
+			|| expression instanceof AIntExpression || expression instanceof AFloatExpression){
 			return "NUMBER";
+		}else if(expression instanceof AStrExpression) {
+			return "STRING";
 		}else if(expression instanceof AValueExpression) {
 			PValue val = ((AValueExpression)expression).getValue();
 			if(val instanceof ANumValue) return "NUMBER";
