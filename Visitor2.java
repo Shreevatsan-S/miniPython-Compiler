@@ -141,13 +141,10 @@ public class Visitor2 extends DepthFirstAdapter {
 	@Override
 	public void caseAAddExpression(AAddExpression node) {
 		inAAddExpression(node);
-		if(node.getLpar() != null) {
+		if(node.getLpar() != null && node.getRpar() != null) {
 			Node left = node.getLpar();
-			arithmetic((PExpression)left,"Add");
-		}
-		if(node.getRpar() != null) {
 			Node right = node.getRpar();
-			arithmetic((PExpression)right,"Add");
+			additionOperationCheck((PExpression)left, (PExpression)right, "Add");
 		}
         outAAddExpression(node);
 	}
@@ -178,6 +175,20 @@ public class Visitor2 extends DepthFirstAdapter {
 			arithmetic((PExpression)right,"Div");
 		}
         outADivExpression(node);
+	}
+	//FLOORDIV
+	@Override
+	public void caseAFloordivExpression(AFloordivExpression node) {
+		inAFloordivExpression(node);
+		if(node.getLpar() != null) {
+			Node left = node.getLpar();
+			arithmetic((PExpression)left,"Floor Div");
+		}
+		if(node.getRpar() != null) {
+			Node right = node.getRpar();
+			arithmetic((PExpression)right,"Floor Div");
+		}
+        outAFloordivExpression(node);
 	}
 	//MOD
 	@Override
@@ -428,6 +439,8 @@ public class Visitor2 extends DepthFirstAdapter {
 			if ( val.getValue() instanceof ANumValue) type = "NUMBER";
 			else if(val.getValue() instanceof AStringValue) type = "STRING";
 			else if(val.getValue() instanceof ANoneValue) type = "NONE";
+			else if(val.getValue() instanceof ATrueValue) type = "BOOLEAN";
+			else if(val.getValue() instanceof AFalseValue) type = "BOOLEAN";
 			else if(val.getValue() instanceof AMethodValue) {}
 		}else if (exp instanceof AIdExpression) {
 			ArrayList<Node> nodes = symtable.get(((AIdExpression)exp).getId().toString());
@@ -467,10 +480,31 @@ public class Visitor2 extends DepthFirstAdapter {
 			}
 		}else if(exp instanceof AFuncCallExpression) {
 			type = return_type;
-		} else if(exp instanceof AAddExpression || exp instanceof AMinusExpression || exp instanceof ADivExpression 
+		} else if(exp instanceof AAddExpression) {
+			// For addition, check if it's string concatenation or numeric addition
+			PExpression left = ((AAddExpression)exp).getLpar();
+			PExpression right = ((AAddExpression)exp).getRpar();
+			String leftType = getExpressionType(left);
+			String rightType = getExpressionType(right);
+			if (leftType != null && rightType != null && leftType.equals("STRING") && rightType.equals("STRING")) {
+				type = "STRING";
+			} else {
+				type = "NUMBER";
+			}
+		} else if(exp instanceof AMinusExpression || exp instanceof ADivExpression 
 				|| exp instanceof AModExpression || exp instanceof AMultExpression 
-				|| exp instanceof AMultmultExpression || exp instanceof AParExpression){
+				|| exp instanceof AMultmultExpression || exp instanceof AParExpression
+				|| exp instanceof AAbsExpression || exp instanceof ARoundExpression
+				|| exp instanceof AFloordivExpression){
 					type = "NUMBER";
+		} else if(exp instanceof ALenExpression) {
+			type = "NUMBER";
+		} else if(exp instanceof AStrExpression) {
+			type = "STRING";
+		} else if(exp instanceof AIntExpression) {
+			type = "NUMBER";
+		} else if(exp instanceof AFloatExpression) {
+			type = "NUMBER";
 		}
 		setOut(node,type);
         outAAssignStatement(node);
@@ -480,17 +514,36 @@ public class Visitor2 extends DepthFirstAdapter {
 	@Override
 	public void inAReturnStatement(AReturnStatement node) {
 		PExpression expression = node.getExpression();
-		if (expression instanceof AAddExpression || expression instanceof AMinExpression || expression instanceof AMultExpression 
+		if (expression instanceof AAddExpression) {
+			// For addition, check if it's string concatenation or numeric addition
+			PExpression left = ((AAddExpression)expression).getLpar();
+			PExpression right = ((AAddExpression)expression).getRpar();
+			String leftType = getExpressionType(left);
+			String rightType = getExpressionType(right);
+			if (leftType != null && rightType != null && leftType.equals("STRING") && rightType.equals("STRING")) {
+				return_type = "STRING";
+			} else {
+				return_type = "NUMBER";
+			}
+		} else if (expression instanceof AMinExpression || expression instanceof AMultExpression 
 		    || expression instanceof AMultmultExpression || expression instanceof AModExpression || expression instanceof ADivExpression 
-			|| expression instanceof AParExpression || expression instanceof AMinExpression || expression instanceof AMaxExpression){
+			|| expression instanceof AParExpression || expression instanceof AMinExpression || expression instanceof AMaxExpression
+			|| expression instanceof AAbsExpression || expression instanceof ARoundExpression
+			|| expression instanceof AFloordivExpression || expression instanceof AIntExpression 
+			|| expression instanceof AFloatExpression){
 			return_type = "NUMBER";
+		}else if(expression instanceof AStrExpression) {
+			return_type = "STRING";
 		}else if(expression instanceof AValueExpression) {
 			in_function = false;
 			PValue val = ((AValueExpression)expression).getValue();
 			if(val instanceof ANumValue) return_type = "NUMBER";
 			else if (val instanceof ANoneValue) return_type = "NONE";
 			else if (val instanceof AStringValue) return_type = "STRING";
+			else if (val instanceof ATrueValue) return_type = "BOOLEAN";
+			else if (val instanceof AFalseValue) return_type = "BOOLEAN";
 		}else if(expression instanceof ATypeExpression) { return_type = "TYPE"; in_function = false; }
+		else if(expression instanceof ALenExpression) { return_type = "NUMBER"; in_function = false; }
 		else if(expression instanceof AOpenExpression) { return_type = "OPEN"; in_function = false; }
 		else if(expression instanceof AListConExpression) {
 			AListConExpression list = (AListConExpression) expression;
@@ -683,19 +736,27 @@ public class Visitor2 extends DepthFirstAdapter {
 	private String getExpressionType(PExpression expression) {
 		if (expression instanceof AAddExpression || expression instanceof AMinExpression || expression instanceof AMultExpression 
 		    || expression instanceof AMultmultExpression || expression instanceof AModExpression || expression instanceof ADivExpression 
-			|| expression instanceof AParExpression || expression instanceof AMinExpression || expression instanceof AMaxExpression){
+			|| expression instanceof AParExpression || expression instanceof AMinExpression || expression instanceof AMaxExpression
+			|| expression instanceof AFloordivExpression || expression instanceof AAbsExpression || expression instanceof ARoundExpression
+			|| expression instanceof AIntExpression || expression instanceof AFloatExpression){
 			return "NUMBER";
+		}else if(expression instanceof AStrExpression) {
+			return "STRING";
 		}else if(expression instanceof AValueExpression) {
 			PValue val = ((AValueExpression)expression).getValue();
 			if(val instanceof ANumValue) return "NUMBER";
 			else if (val instanceof ANoneValue) return "NONE";
 			else if (val instanceof AStringValue) return "STRING";
+			else if (val instanceof ATrueValue) return "BOOLEAN";
+			else if (val instanceof AFalseValue) return "BOOLEAN";
+			return null;
 		}else if(expression instanceof ATypeExpression) return  "TYPE";
 		else if(expression instanceof AOpenExpression) return "OPEN";
 		else if(expression instanceof AListConExpression) {
 			int line = ((AListConExpression)expression).getLBr().getLine();
 			System.out.println("Line " +getLineNum(line)+ ": Invalid Syntax.");
 			errors++;
+			return null;
 		}else if(expression instanceof AListexpExpression ) {
 			String id = ((AListexpExpression)expression).getId().toString();
 			//if it's a global variable
@@ -724,6 +785,43 @@ public class Visitor2 extends DepthFirstAdapter {
 			return (String)getOut(n);
 		}
 		return null;
+	}
+
+	/** Check addition operations - allows both number+number and string+string concatenation */
+	private void additionOperationCheck(PExpression left, PExpression right, String operation) {
+		String leftType = getExpressionType(left);
+		String rightType = getExpressionType(right);
+		
+		// Allow number + number or string + string
+		if (leftType != null && rightType != null) {
+			if (leftType.equals("NUMBER") && rightType.equals("NUMBER")) {
+				// Valid: number + number
+				return;
+			} else if (leftType.equals("STRING") && rightType.equals("STRING")) {
+				// Valid: string + string (concatenation)
+				return;
+			} else {
+				// Invalid: mixed types
+				System.out.println("Line " + getLineNum(getExpressionLine(left)) + ": " + operation + " operation requires both operands to be the same type (both numbers or both strings).");
+				errors++;
+			}
+		} else {
+			// Fallback to arithmetic check for complex expressions
+			arithmetic(left, operation);
+			arithmetic(right, operation);
+		}
+	}
+
+	/** Get line number from expression for error reporting */
+	private int getExpressionLine(PExpression expression) {
+		if (expression instanceof AValueExpression) {
+			PValue val = ((AValueExpression)expression).getValue();
+			if (val instanceof ANumValue) return ((ANumValue)val).getNumber().getLine();
+			else if (val instanceof AStringValue) return ((AStringValue)val).getString().getLine();
+		} else if (expression instanceof AIdExpression) {
+			return ((AIdExpression)expression).getId().getLine();
+		}
+		return 1; // Default line number
 	}
 
 	/** print correct line numbers */
