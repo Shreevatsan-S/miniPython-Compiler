@@ -40,6 +40,9 @@ Tokens
 	type = 'type';
 	max = 'max';
 	min = 'min';
+	len = 'len';
+	abs = 'abs';
+	round = 'round';
 	and = 'and';
 	or = 'or';
 	not = 'not';
@@ -49,8 +52,8 @@ Tokens
 	leq = '<=';
 	eq = '==';
 	neq = '!=';
-	true = 'true';
-	false = 'false';
+	true = 'True';
+	false = 'False';
 	dot = '.';
 	none = 'None';
 	line_comment = '#' not_eol* eol; 
@@ -105,6 +108,9 @@ Productions
 				              {type} type l_par id r_par{->New expression.type(id)}|
 				              {max} max l_par value comma_v+ r_par{->New expression.max(value,[comma_v])}|
 				              {min} min l_par value comma_v+ r_par{->New expression.min(value,[comma_v])}|
+				              {len} len l_par id r_par{->New expression.len(id)}|
+				              {abs} abs l_par expression r_par{->New expression.abs(expression)}|
+				              {round} round l_par expression r_par{->New expression.round(expression)}|
 				              {par} l_par expression r_par{->New expression.par(expression)};
 	comma_v = comma value{->New comma_v(value)};
 	
@@ -133,6 +139,8 @@ Productions
 	value = {method} id dot function_call {->New value.method(id,function_call)}|
 		    {num} number {->New value.num(number)}| 
 			{string} string {->New value.string(string)}|
+			{true} true {->New value.true(true)}|
+			{false} false {->New value.false(false)}|
 			{none} none {->New value.none(none)};
 	
 
@@ -171,6 +179,9 @@ Abstract Syntax Tree
 				 {type} id|
 				 {max} value comma_v*|
 				 {min} value comma_v*|
+				 {len} id|
+				 {abs} expression|
+				 {round} expression|
 				 {par} expression |
 				 {listexp} id expression|
 				 {open} open [lpar]:expression [rpar]:expression|
@@ -200,4 +211,6 @@ Abstract Syntax Tree
 	value = {method} id function_call |
 		    {num} number | 
 			{string} string |
+			{true} true |
+			{false} false |
 			{none} none ;
